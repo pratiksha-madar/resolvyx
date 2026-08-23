@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Building2, LogOut, Plus, Ticket, Users, AlertCircle } from "lucide-react";
 import api from "../api/axios";
+import CreateTicketModal from "../components/CreateTicketModal";
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
   const name = localStorage.getItem("name");
   const role = localStorage.getItem("role");
 
@@ -85,7 +87,10 @@ export default function Dashboard() {
             <h1 className="text-2xl font-bold text-white">Tickets</h1>
             <p className="text-slate-400 text-sm mt-1">Track and manage all reported issues</p>
           </div>
-          <button className="bg-indigo-500 hover:bg-indigo-400 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all">
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-indigo-500 hover:bg-indigo-400 text-white font-medium text-sm px-4 py-2.5 rounded-lg flex items-center gap-2 transition-all"
+          >
             <Plus size={16} />
             New ticket
           </button>
@@ -158,6 +163,13 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {showModal && (
+        <CreateTicketModal
+          onClose={() => setShowModal(false)}
+          onCreated={fetchTickets}
+        />
+      )}
     </div>
   );
 }
