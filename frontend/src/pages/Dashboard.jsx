@@ -67,6 +67,12 @@ export default function Dashboard() {
             <span className="text-lg font-semibold text-white">Resolvyx</span>
           </div>
           <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate("/categories")}
+              className="text-sm text-slate-400 hover:text-white transition-all"
+            >
+              Categories
+            </button>
             <div className="text-right hidden sm:block">
               <p className="text-sm text-white font-medium">{name}</p>
               <p className="text-xs text-slate-400">{role}</p>
