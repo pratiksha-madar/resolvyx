@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, LogOut, Plus, Ticket, Users, AlertCircle } from "lucide-react";
+import { Building2, LogOut, Plus, Ticket, Users, AlertCircle, UserCheck, ArrowRight, Check } from "lucide-react";
 import api from "../api/axios";
 import CreateTicketModal from "../components/CreateTicketModal";
 
@@ -10,6 +10,7 @@ export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const name = localStorage.getItem("name");
   const role = localStorage.getItem("role");
 
@@ -36,6 +37,32 @@ export default function Dashboard() {
   const handleLogout = () => {
     localStorage.clear();
     navigate("/");
+  };
+
+  const handleAssign = async (ticketId) => {
+    setActionLoadingId(ticketId);
+    try {
+      await api.put(`/tickets/${ticketId}/assign`);
+      fetchTickets();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Couldn't assign ticket.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleStatusChange = async (ticketId, newStatus) => {
+    setActionLoadingId(ticketId);
+    try {
+      await api.put(`/tickets/${ticketId}/status`, { status: newStatus });
+      fetchTickets();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Couldn't update status.");
+    } finally {
+      setActionLoadingId(null);
+    }
   };
 
   const statusColor = {
@@ -136,36 +163,78 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-3">
-            {tickets.map((ticket, i) => (
-              <motion.div
-                key={ticket.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
-                className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-white font-medium mb-1">{ticket.title}</h3>
-                    <p className="text-slate-400 text-sm line-clamp-1">{ticket.description}</p>
-                    <div className="flex items-center gap-3 mt-3 text-xs">
-                      <span className="text-slate-500">{ticket.categoryName}</span>
-                      <span className={`font-medium ${urgencyColor[ticket.urgency]}`}>
-                        {ticket.urgency}
-                      </span>
-                      {ticket.assignedToName && (
-                        <span className="text-slate-500">→ {ticket.assignedToName}</span>
-                      )}
+            {tickets.map((ticket, i) => {
+              const isBusy = actionLoadingId === ticket.id;
+              return (
+                <motion.div
+                  key={ticket.id}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.05 }}
+                  className="bg-white/5 border border-white/10 rounded-xl p-5 hover:border-white/20 transition-all"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-white font-medium mb-1">{ticket.title}</h3>
+                      <p className="text-slate-400 text-sm line-clamp-1">{ticket.description}</p>
+                      <div className="flex items-center gap-3 mt-3 text-xs">
+                        <span className="text-slate-500">{ticket.categoryName}</span>
+                        <span className={`font-medium ${urgencyColor[ticket.urgency]}`}>
+                          {ticket.urgency}
+                        </span>
+                        {ticket.assignedToName && (
+                          <span className="text-slate-500">→ {ticket.assignedToName}</span>
+                        )}
+                      </div>
                     </div>
+                    <span
+                      className={`text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap ${statusColor[ticket.status]}`}
+                    >
+                      {ticket.status.replace("_", " ")}
+                    </span>
                   </div>
-                  <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-full border whitespace-nowrap ${statusColor[ticket.status]}`}
-                  >
-                    {ticket.status.replace("_", " ")}
-                  </span>
-                </div>
-              </motion.div>
-            ))}
+
+                  <div className="flex items-center gap-2 mt-4 pt-4 border-t border-white/10">
+                    {ticket.status === "OPEN" && role === "ORG_ADMIN" && (
+                      <button
+                        onClick={() => handleAssign(ticket.id)}
+                        disabled={isBusy}
+                        className="text-xs font-medium bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 disabled:opacity-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                      >
+                        <UserCheck size={13} />
+                        {isBusy ? "Assigning..." : "Auto-assign"}
+                      </button>
+                    )}
+                    {ticket.status === "ASSIGNED" && (
+                      <button
+                        onClick={() => handleStatusChange(ticket.id, "IN_PROGRESS")}
+                        disabled={isBusy}
+                        className="text-xs font-medium bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 disabled:opacity-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                      >
+                        <ArrowRight size={13} />
+                        {isBusy ? "Updating..." : "Start progress"}
+                      </button>
+                    )}
+                    {ticket.status === "IN_PROGRESS" && (
+                      <button
+                        onClick={() => handleStatusChange(ticket.id, "RESOLVED")}
+                        disabled={isBusy}
+                        className="text-xs font-medium bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition-all"
+                      >
+                        <Check size={13} />
+                        {isBusy ? "Resolving..." : "Mark resolved"}
+                      </button>
+                    )}
+                    {ticket.status === "RESOLVED" && (
+                      <span className="text-xs text-emerald-400/70 flex items-center gap-1.5">
+                        <Check size={13} />
+                        Resolved
+                      </span>
+                    )}
+                  </div>
+                </motion.div>
+              );
+            })}
           </div>
         )}
       </div>
