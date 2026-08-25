@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, LogOut, Plus, Ticket, Users, AlertCircle, UserCheck, ArrowRight, Check } from "lucide-react";
+import { Building2, LogOut, Plus, Ticket, Users, AlertCircle, UserCheck, ArrowRight, Check, Star } from "lucide-react";
 import api from "../api/axios";
 import CreateTicketModal from "../components/CreateTicketModal";
 
@@ -11,8 +11,10 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [feedbackDraft, setFeedbackDraft] = useState({});
   const name = localStorage.getItem("name");
   const role = localStorage.getItem("role");
+  const userId = Number(localStorage.getItem("userId"));
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -60,6 +62,41 @@ export default function Dashboard() {
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "Couldn't update status.");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const setDraftRating = (ticketId, rating) => {
+    setFeedbackDraft((prev) => ({
+      ...prev,
+      [ticketId]: { ...(prev[ticketId] || {}), rating },
+    }));
+  };
+
+  const setDraftComment = (ticketId, comment) => {
+    setFeedbackDraft((prev) => ({
+      ...prev,
+      [ticketId]: { ...(prev[ticketId] || {}), comment },
+    }));
+  };
+
+  const handleSubmitFeedback = async (ticketId) => {
+    const draft = feedbackDraft[ticketId];
+    if (!draft?.rating) {
+      alert("Please select a star rating first.");
+      return;
+    }
+    setActionLoadingId(ticketId);
+    try {
+      await api.post(`/tickets/${ticketId}/feedback`, {
+        rating: draft.rating,
+        comment: draft.comment || "",
+      });
+      fetchTickets();
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Couldn't submit feedback.");
     } finally {
       setActionLoadingId(null);
     }
@@ -165,6 +202,10 @@ export default function Dashboard() {
           <div className="space-y-3">
             {tickets.map((ticket, i) => {
               const isBusy = actionLoadingId === ticket.id;
+              const isOwner = ticket.raisedByUserId === userId;
+              const canRate = ticket.status === "RESOLVED" && isOwner && !ticket.feedbackRating;
+              const draft = feedbackDraft[ticket.id] || {};
+
               return (
                 <motion.div
                   key={ticket.id}
@@ -225,13 +266,67 @@ export default function Dashboard() {
                         {isBusy ? "Resolving..." : "Mark resolved"}
                       </button>
                     )}
-                    {ticket.status === "RESOLVED" && (
+                    {ticket.status === "RESOLVED" && !canRate && !ticket.feedbackRating && (
                       <span className="text-xs text-emerald-400/70 flex items-center gap-1.5">
                         <Check size={13} />
                         Resolved
                       </span>
                     )}
+                    {ticket.feedbackRating && (
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <Star
+                              key={n}
+                              size={14}
+                              className={n <= ticket.feedbackRating ? "fill-amber-400 text-amber-400" : "text-slate-600"}
+                            />
+                          ))}
+                        </div>
+                        {ticket.feedbackComment && (
+                          <span className="text-xs text-slate-500 italic">"{ticket.feedbackComment}"</span>
+                        )}
+                      </div>
+                    )}
                   </div>
+
+                  {canRate && (
+                    <div className="mt-3 pt-3 border-t border-white/10 space-y-2">
+                      <p className="text-xs text-slate-400">How was this resolved?</p>
+                      <div className="flex items-center gap-1">
+                        {[1, 2, 3, 4, 5].map((n) => (
+                          <button
+                            key={n}
+                            onClick={() => setDraftRating(ticket.id, n)}
+                            className="p-0.5"
+                          >
+                            <Star
+                              size={20}
+                              className={
+                                n <= (draft.rating || 0)
+                                  ? "fill-amber-400 text-amber-400"
+                                  : "text-slate-600 hover:text-slate-400"
+                              }
+                            />
+                          </button>
+                        ))}
+                      </div>
+                      <input
+                        type="text"
+                        value={draft.comment || ""}
+                        onChange={(e) => setDraftComment(ticket.id, e.target.value)}
+                        placeholder="Optional comment..."
+                        className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+                      />
+                      <button
+                        onClick={() => handleSubmitFeedback(ticket.id)}
+                        disabled={isBusy}
+                        className="text-xs font-medium bg-indigo-500 hover:bg-indigo-400 disabled:opacity-50 text-white px-3 py-1.5 rounded-lg transition-all"
+                      >
+                        {isBusy ? "Submitting..." : "Submit feedback"}
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               );
             })}
