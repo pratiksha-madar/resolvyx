@@ -5,7 +5,7 @@ import api from "../api/axios";
 import { useNavigate } from "react-router-dom";
 
 export default function Auth() {
-  const [mode, setMode] = useState("login"); // "login" | "signup"
+  const [mode, setMode] = useState("login");
   const [form, setForm] = useState({
     organizationName: "",
     name: "",
@@ -35,6 +35,7 @@ export default function Auth() {
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("name", res.data.name);
       localStorage.setItem("role", res.data.role);
+      localStorage.setItem("userId", res.data.userId);
       navigate("/dashboard");
     } catch (err) {
       setError(err.response?.data?.message || "Something went wrong. Please try again.");
