@@ -1,5 +1,7 @@
 package com.resolvyx.resolvyx.controller;
 
+import com.resolvyx.resolvyx.dto.AnalyticsResponse;
+import com.resolvyx.resolvyx.dto.FeedbackRequest;
 import com.resolvyx.resolvyx.dto.StatusUpdateRequest;
 import com.resolvyx.resolvyx.dto.TicketRequest;
 import com.resolvyx.resolvyx.dto.TicketResponse;
@@ -39,5 +41,16 @@ public class TicketController {
     @PutMapping("/{id}/status")
     public ResponseEntity<TicketResponse> updateStatus(@PathVariable Long id, @Valid @RequestBody StatusUpdateRequest request, Authentication authentication) {
         return ResponseEntity.ok(ticketService.updateStatus(id, request.getStatus(), authentication.getName()));
+    }
+
+    @PostMapping("/{id}/feedback")
+    public ResponseEntity<TicketResponse> submitFeedback(@PathVariable Long id, @Valid @RequestBody FeedbackRequest request, Authentication authentication) {
+        return ResponseEntity.ok(ticketService.submitFeedback(id, request.getRating(), request.getComment(), authentication.getName()));
+    }
+
+    @GetMapping("/analytics")
+    @PreAuthorize("hasRole('ORG_ADMIN')")
+    public ResponseEntity<AnalyticsResponse> analytics(Authentication authentication) {
+        return ResponseEntity.ok(ticketService.getAnalytics(authentication.getName()));
     }
 }

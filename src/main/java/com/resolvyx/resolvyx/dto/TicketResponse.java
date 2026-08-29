@@ -20,4 +20,7 @@ public class TicketResponse {
     private String assignedToName;
     private LocalDateTime createdAt;
     private LocalDateTime resolvedAt;
+    private Long raisedByUserId;
+    private Integer feedbackRating;
+    private String feedbackComment;
 }

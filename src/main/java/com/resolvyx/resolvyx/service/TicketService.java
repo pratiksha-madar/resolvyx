@@ -1,5 +1,6 @@
 package com.resolvyx.resolvyx.service;
 
+import com.resolvyx.resolvyx.dto.AnalyticsResponse;
 import com.resolvyx.resolvyx.dto.TicketRequest;
 import com.resolvyx.resolvyx.dto.TicketResponse;
 import com.resolvyx.resolvyx.entity.*;
@@ -9,8 +10,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,6 +28,9 @@ public class TicketService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private FeedbackRepository feedbackRepository;
 
     public TicketResponse createTicket(TicketRequest request, String email) {
         User raisedBy = userRepository.findByEmail(email)
@@ -118,6 +125,76 @@ public class TicketService {
         return toResponse(saved);
     }
 
+    public TicketResponse submitFeedback(Long ticketId, Integer rating, String comment, String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        Ticket ticket = ticketRepository.findById(ticketId)
+                .orElseThrow(() -> new RuntimeException("Ticket not found"));
+
+        if (!ticket.getOrganization().getId().equals(user.getOrganization().getId())) {
+            throw new RuntimeException("Ticket does not belong to your organization");
+        }
+
+        if (!ticket.getRaisedBy().getId().equals(user.getId())) {
+            throw new RuntimeException("Only the person who raised this ticket can leave feedback");
+        }
+
+        if (ticket.getStatus() != TicketStatus.RESOLVED) {
+            throw new RuntimeException("Feedback can only be left on resolved tickets");
+        }
+
+        if (feedbackRepository.existsByTicket(ticket)) {
+            throw new RuntimeException("Feedback has already been submitted for this ticket");
+        }
+
+        Feedback feedback = new Feedback();
+        feedback.setTicket(ticket);
+        feedback.setRating(rating);
+        feedback.setComment(comment);
+        feedback.setCreatedAt(LocalDateTime.now());
+        feedbackRepository.save(feedback);
+
+        return toResponse(ticket);
+    }
+
+    public AnalyticsResponse getAnalytics(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        List<Ticket> tickets = ticketRepository.findByOrganization(user.getOrganization());
+
+        long total = tickets.size();
+        long open = tickets.stream().filter(t -> t.getStatus() == TicketStatus.OPEN).count();
+        long inProgress = tickets.stream().filter(t -> t.getStatus() == TicketStatus.ASSIGNED || t.getStatus() == TicketStatus.IN_PROGRESS).count();
+        long resolved = tickets.stream().filter(t -> t.getStatus() == TicketStatus.RESOLVED).count();
+        long escalated = tickets.stream().filter(Ticket::isEscalated).count();
+
+        Double avgResolutionHours = tickets.stream()
+                .filter(t -> t.getStatus() == TicketStatus.RESOLVED && t.getResolvedAt() != null)
+                .mapToLong(t -> ChronoUnit.HOURS.between(t.getCreatedAt(), t.getResolvedAt()))
+                .average()
+                .stream().boxed().findFirst().orElse(null);
+
+        List<Feedback> allFeedback = tickets.stream()
+                .map(feedbackRepository::findByTicket)
+                .filter(java.util.Optional::isPresent)
+                .map(java.util.Optional::get)
+                .toList();
+
+        Double avgRating = allFeedback.isEmpty() ? null :
+                allFeedback.stream().mapToInt(Feedback::getRating).average().orElse(0);
+
+        Map<String, Long> byCategory = tickets.stream()
+                .collect(Collectors.groupingBy(t -> t.getCategory().getName(), LinkedHashMap::new, Collectors.counting()));
+
+        Map<String, Long> byStaff = tickets.stream()
+                .filter(t -> t.getAssignedTo() != null)
+                .collect(Collectors.groupingBy(t -> t.getAssignedTo().getName(), LinkedHashMap::new, Collectors.counting()));
+
+        return new AnalyticsResponse(total, open, inProgress, resolved, escalated, avgResolutionHours, avgRating, byCategory, byStaff);
+    }
+
     @Scheduled(fixedRate = 60000)
     public void checkSlaBreaches() {
         List<Ticket> allOpenTickets = ticketRepository.findAll().stream()
@@ -154,6 +231,7 @@ public class TicketService {
     }
 
     private TicketResponse toResponse(Ticket t) {
+        Feedback feedback = feedbackRepository.findByTicket(t).orElse(null);
         return new TicketResponse(
                 t.getId(),
                 t.getTitle(),
@@ -165,7 +243,10 @@ public class TicketService {
                 t.getRaisedBy().getName(),
                 t.getAssignedTo() != null ? t.getAssignedTo().getName() : null,
                 t.getCreatedAt(),
-                t.getResolvedAt()
+                t.getResolvedAt(),
+                t.getRaisedBy().getId(),
+                feedback != null ? feedback.getRating() : null,
+                feedback != null ? feedback.getComment() : null
         );
     }
 }

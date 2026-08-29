@@ -48,7 +48,7 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getEmail(), org.getId(), user.getRole().name());
 
-        return new AuthResponse(token, user.getName(), user.getRole().name(), org.getName());
+        return new AuthResponse(token, user.getName(), user.getRole().name(), org.getName(), user.getId(), org.getOrgCode());
     }
 
     public AuthResponse login(LoginRequest request) {
@@ -61,7 +61,7 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getEmail(), user.getOrganization().getId(), user.getRole().name());
 
-        return new AuthResponse(token, user.getName(), user.getRole().name(), user.getOrganization().getName());
+        return new AuthResponse(token, user.getName(), user.getRole().name(), user.getOrganization().getName(), user.getId(), user.getOrganization().getOrgCode());
     }
 
     public AuthResponse join(JoinRequest request) {
@@ -88,7 +88,7 @@ public class AuthService {
 
         String token = jwtUtil.generateToken(user.getEmail(), org.getId(), user.getRole().name());
 
-        return new AuthResponse(token, user.getName(), user.getRole().name(), org.getName());
+        return new AuthResponse(token, user.getName(), user.getRole().name(), org.getName(), user.getId(), org.getOrgCode());
     }
 
     private String generateOrgCode() {
