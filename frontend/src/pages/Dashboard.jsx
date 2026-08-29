@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Building2, LogOut, Plus, Ticket, Users, AlertCircle, UserCheck, ArrowRight, Check, Star } from "lucide-react";
+import { Building2, LogOut, Plus, Ticket, Users, AlertCircle, UserCheck, ArrowRight, Check, Star, BarChart3 } from "lucide-react";
 import api from "../api/axios";
 import CreateTicketModal from "../components/CreateTicketModal";
 
@@ -131,6 +131,15 @@ export default function Dashboard() {
             <span className="text-lg font-semibold text-white">Resolvyx</span>
           </div>
           <div className="flex items-center gap-4">
+            {role === "ORG_ADMIN" && (
+              <button
+                onClick={() => navigate("/analytics")}
+                className="text-sm text-slate-400 hover:text-white transition-all flex items-center gap-1.5"
+              >
+                <BarChart3 size={14} />
+                Analytics
+              </button>
+            )}
             <button
               onClick={() => navigate("/categories")}
               className="text-sm text-slate-400 hover:text-white transition-all"
