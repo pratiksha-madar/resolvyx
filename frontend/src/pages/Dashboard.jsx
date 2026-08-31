@@ -132,13 +132,22 @@ export default function Dashboard() {
           </div>
           <div className="flex items-center gap-4">
             {role === "ORG_ADMIN" && (
-              <button
-                onClick={() => navigate("/analytics")}
-                className="text-sm text-slate-400 hover:text-white transition-all flex items-center gap-1.5"
-              >
-                <BarChart3 size={14} />
-                Analytics
-              </button>
+              <>
+                <button
+                  onClick={() => navigate("/team")}
+                  className="text-sm text-slate-400 hover:text-white transition-all flex items-center gap-1.5"
+                >
+                  <Users size={14} />
+                  Team
+                </button>
+                <button
+                  onClick={() => navigate("/analytics")}
+                  className="text-sm text-slate-400 hover:text-white transition-all flex items-center gap-1.5"
+                >
+                  <BarChart3 size={14} />
+                  Analytics
+                </button>
+              </>
             )}
             <button
               onClick={() => navigate("/categories")}
