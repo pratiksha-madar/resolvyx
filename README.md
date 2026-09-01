@@ -2,12 +2,12 @@
 
 **A multi-tenant issue/complaint tracking platform** — built for organizations (colleges, apartments, offices, hospitals) to let their members raise issues, get them automatically routed to staff, tracked through resolution, and rated afterward.
 
-Think of it as infrastructure any organization can plug into to manage internal complaints — one deployment serves unlimited organizations, with each organization's data kept completely isolated from every other's.
-
 ## Live Demo
 
-- Frontend: _(add link once deployed)_
-- Backend API: _(add link once deployed)_
+- **App:** https://resolvyx.vercel.app
+- **Backend API:** https://resolvyx.onrender.com
+
+> Note: the backend is hosted on a free tier and may take 20-30 seconds to respond on the first request after inactivity.
 
 ## Features
 
@@ -20,12 +20,15 @@ Think of it as infrastructure any organization can plug into to manage internal 
 - **SLA auto-escalation** — a scheduled background job detects tickets that missed their resolution deadline and automatically boosts their priority
 - **Feedback & ratings** — ticket raisers rate the resolution (1–5 stars + comment) once resolved
 - **Analytics dashboard** — resolution time, category breakdown, staff workload, and average ratings, computed via aggregation queries
+- **Team management** — admins can view all members and invite new ones with a join code
 
 ## Tech Stack
 
-**Backend:** Java 17 · Spring Boot 4 · Spring Security · Spring Data JPA · MySQL · JWT (jjwt) · BCrypt
+**Backend:** Java 17 · Spring Boot 4 · Spring Security · Spring Data JPA · MySQL · JWT (jjwt) · BCrypt · JUnit & Mockito
 
 **Frontend:** React (Vite) · Tailwind CSS · Framer Motion · Axios · React Router
+
+**Deployment:** Railway (MySQL) · Render (backend, Docker) · Vercel (frontend)
 
 ## Architecture
 Organization (tenant)
@@ -35,7 +38,6 @@ Organization (tenant)
 ├── raised by a User
 ├── assigned to a User (optional)
 └── has Feedback (optional, post-resolution)
-
 
 Every Ticket and Category carries an `organization_id`, and every service method explicitly verifies that the resource being accessed belongs to the caller's own organization — this is what actually enforces tenant isolation, not just the foreign key.
 
@@ -52,12 +54,12 @@ Every Ticket and Category carries an `organization_id`, and every service method
 | PUT | `/api/tickets/{id}/status` | Assigned staff / Admin | Updates ticket status |
 | POST | `/api/tickets/{id}/feedback` | Ticket raiser | Submits a rating |
 | GET | `/api/tickets/analytics` | Admin | Org-wide performance stats |
+| GET | `/api/team` | Admin | Lists all org members |
 
 ## Running Locally
 
 **Backend**
 ```bash
-# requires a running MySQL instance
 cd resolvyx
 # update src/main/resources/application.properties with your MySQL credentials
 ./mvnw spring-boot:run
@@ -71,6 +73,13 @@ npm install
 npm run dev
 ```
 Runs on `http://localhost:5173`
+
+## Testing
+
+Unit tests for core business logic (priority scoring, org-isolation, staff load-balancing, feedback rules) using JUnit 5 and Mockito:
+```bash
+./mvnw test
+```
 
 ## Author
 
